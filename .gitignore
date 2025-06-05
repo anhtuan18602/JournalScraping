@@ -12,8 +12,8 @@ journalscraping
 *.json
 *.csv
 *.pickle
-*.txt
 *.zip
 *.pub
+*.xlsx
 
 .DS_Store

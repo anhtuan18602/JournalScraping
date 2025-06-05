@@ -16,22 +16,29 @@ if __name__ == '__main__':
     years = (2024, 2024)
 
     journal = 'jfe'
-    if journal == "jfe":
-        scraper = ElsevierMetadataScraper(ELSEVIER_API_KEY, "experiment", 2024, "Journal of Financial Economics")
-        papers = pd.DataFrame(scraper.fetch_metadata())
-    else :   
-        journal_map = {
-            'jf': {'publisher': 'wiley', 'identifier': '1540-6261'},
-            'rfs': {'publisher': 'oxford', 'identifier': 'The Review of Financial Studies'},
-            'rf': {'publisher': 'oxford', 'identifier': 'Review of Finance'},
-            'jfe': {'publisher': 'elsevier', 'identifier': '0304-405X'},
-            'jfqa': {'publisher': 'cambridge', 'identifier': 'FB35548FF614F4556E96D01FA2CB412E'},
-            'jbf': {'publisher': 'elsevier', 'identifier': '0378-4266'},
-            'ecmt': {'publisher': 'wiley', 'identifier': '1468-0262'},
+    journal_map = {
+            'jf': {'publisher': 'wiley', 'identifier': '1540-6261','name':'Journal of Finance'},
+            'rfs': {'publisher': 'oxford', 'identifier': 'The Review of Financial Studies','name': 'The Review of Financial Studies'},
+            'rf': {'publisher': 'oxford', 'identifier': 'Review of Finance','name': 'Review of Finance'},
+            'jfe': {'publisher': 'elsevier', 'identifier': '0304-405X', 'name': 'Journal of Financial Economics'},
+            'jfqa': {'publisher': 'cambridge', 'identifier': 'FB35548FF614F4556E96D01FA2CB412E','name':'Journal of Financial and Quantitative Analysis'},
+            'jbf': {'publisher': 'elsevier', 'identifier': '0378-4266','name':'Journal of Banking and Finance'},
+            'ecmt': {'publisher': 'wiley', 'identifier': '1468-0262','name':'Econometrica'},
         }
-        journalinfo = journal_map.get(journal)
+    journalinfo = journal_map.get(journal)
 
-        publisher = journalinfo['publisher']
+    publisher = journalinfo['publisher']
+
+    ## Elsevier uses their own api
+    if publisher == "elsevier":
+        papers = []
+        for year in range(years[0], years[1] + 1):
+            scraper = ElsevierMetadataScraper(ELSEVIER_API_KEY, year, journalinfo["name"])
+            papers.append(pd.DataFrame(scraper.fetch_metadata()))
+        papers = pd.concat(papers)
+    else :   
+        
+        
         search_inputs = {
             'publisher': journalinfo['publisher'],
             'shortname': journal,
@@ -102,6 +109,7 @@ if __name__ == '__main__':
         'quasi-experimental'
     ]
 
+    
     papers['keywords_title'] = papers['title'].str.contains('|'.join(keywords), regex=True, case=False)
     papers['keywords_abstract'] = papers['abstract'].str.contains('|'.join(keywords), regex=True, case=False)
     papers['keywords_not_title'] = papers['title'].str.contains('|'.join(keywords_not), regex=True, case=False)

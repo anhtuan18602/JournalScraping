@@ -3,7 +3,7 @@ import time
 import json
 
 class ElsevierMetadataScraper:
-    def __init__(self, api_key, method, year, journal, delay=3, max_results=1000):
+    def __init__(self, api_key, year, journal, delay=3, max_results=1000):
         self.api_key = api_key
         self.delay = delay
         self.max_results = max_results
@@ -17,23 +17,16 @@ class ElsevierMetadataScraper:
             'X-ELS-APIKey': self.api_key,
             'Accept': 'application/json'
         }
-    def get_abstract(self, scopus_id):
-        params = {
-                'view': 'FULL',
-                'field': 'description'
-            }
-        url = f'https://api.elsevier.com/content/abstract/scopus_id/{scopus_id}'
-        response = requests.get(url, headers=self.headers, params=params)
+    def get_article(self, doi):
+
+        url = f'https://api.elsevier.com/content/article/doi/{doi}'
+        response = requests.get(url, headers=self.headers)
         if response.status_code == 200:
             data = response.json()
-            with open('abstract_raw_response.json', 'w', encoding='utf-8') as f:
+            with open('article_raw_response.json', 'w', encoding='utf-8') as f:
                     json.dump(data, f, indent=2, ensure_ascii=False)
-            try:
-                abstract = data['abstracts-retrieval-response']['coredata']['dc:description']
-                return abstract
-            except KeyError:
-                return ''
-        return ''
+            return data['full-text-retrieval-response']['coredata'] 
+        return {}
 
     def fetch_metadata(self):
         all_results = []
@@ -66,30 +59,28 @@ class ElsevierMetadataScraper:
                 break
 
             for entry in entries:
-                page_range = entry.get('prism:pageRange', '')
-                start_page, end_page = '', ''
-                if page_range and '-' in page_range:
-                    start_page, end_page = page_range.split('-')
                 affiliations = entry.get('affiliation', [])
                 affil_names = [a.get('affilname', '') for a in affiliations]
                 affil_str = '; '.join(affil_names) if affil_names else ''
                 doi = entry.get('prism:doi')
-                scopus_id = entry.get('dc:identifier').split(":")[1]
+                scidir = self.get_article(doi)
+
                 all_results.append({
                     'title': entry.get('dc:title'),
-                    'abstract': entry.get('dc:description'),
+                    'abstract': scidir.get('dc:description'),
                     #'abstract': self.get_abstract(scopus_id),
                     'doi': doi,
                     'year': entry.get('prism:coverDate', '')[:4],
                     'cover_date': entry.get('prism:coverDate'),
-                    'author': entry.get('dc:creator'),
+                    'author.name': entry.get('dc:creator'),
+                    'authors': scidir.get('authors'),
                     'volume': entry.get('prism:volume'),
-                    'issue': entry.get('prism:issueIdentifier'),
+                    'issue': scidir.get('prism:issueIdentifier'),
                     'affiliation': affil_str,
                     'citedbycount': entry.get("citedby-count"),
-                    'page_range': page_range,
-                    'start_page': start_page,
-                    'end_page': end_page
+                    'page_range': scidir.get("prism:pageRange"),
+                    'start_page': scidir.get('prism:startingPage'),
+                    'end_page': scidir.get('prism:endingPage')
                 })
                 time.sleep(1)
             start += count
