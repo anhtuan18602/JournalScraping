@@ -5,6 +5,7 @@ files/
 backups/
 searches/
 classes/Keys.py
+journalscraping
 
 *.db
 *.pyc
@@ -13,4 +14,6 @@ classes/Keys.py
 *.pickle
 *.txt
 *.zip
+*.pub
+
 .DS_Store
