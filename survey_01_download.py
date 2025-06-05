@@ -15,7 +15,7 @@ if __name__ == '__main__':
 
     years = (2024, 2024)
 
-    journal = 'jfe'
+    journal = 'jbf'
     journal_map = {
             'jf': {'publisher': 'wiley', 'identifier': '1540-6261','name':'Journal of Finance'},
             'rfs': {'publisher': 'oxford', 'identifier': 'The Review of Financial Studies','name': 'The Review of Financial Studies'},
@@ -59,7 +59,7 @@ if __name__ == '__main__':
         
         
         print(download_targets[0])
-        if journal in ["jf","rfs"]:
+        if publisher in ["oxford","wiley"]:
             dl = WileyArticleDownloader(download_targets,output_results=True)
         else:
             dl = ArticleDownloader(download_targets,output_results=True)
@@ -76,9 +76,9 @@ if __name__ == '__main__':
             if parse_result.paper is not None:
                 parse_results.append(parse_result.paper)
 
-        print(parse_results)
-        print(type(parse_results))
-        print(type(parse_results[0]))
+        #print(parse_results)
+        #print(type(parse_results))
+        #print(type(parse_results[0]))
     #    print(parse_results[0].keys())
 
 
@@ -90,6 +90,7 @@ if __name__ == '__main__':
             dfs.append(df)
 
         papers = pd.concat(dfs, ignore_index=True)
+        SearchProvider.driver.quit()
 
 
     keywords = [
@@ -117,3 +118,6 @@ if __name__ == '__main__':
 
     print(papers)
     papers.to_excel('papers_' + str(years[0]) + '_' + str(years[1]) + '_' + journal + '.xlsx', index = False, header=True)
+
+    
+

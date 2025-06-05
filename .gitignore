@@ -7,6 +7,7 @@ searches/
 classes/Keys.py
 journalscraping
 
+*.htm
 *.db
 *.pyc
 *.json

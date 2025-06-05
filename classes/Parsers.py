@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 
 from .Utils import match_emails
-
+from datetime import datetime
 import json
 import textract
 import re
@@ -627,7 +627,7 @@ class CambridgeParser(FileParser):
         soup = BeautifulSoup(self.file_content, 'html.parser')
 
         title = soup.find('meta', attrs={'property': 'og:title'})['content']
-        # print(title)
+        #print(title)
         if any([st.lower() in title.lower() for st in ['ERRATUM', 'CORRIGENDUM']]):
             return self
 
@@ -636,6 +636,7 @@ class CambridgeParser(FileParser):
             contribs = contributor_details.find('div', attrs={'class': ['row', 'authors']})
     #        author_details = contributor_details.find('div', attrs={'class': 'authors-details', 'id': 'authors-details'})
             if contributor_details.find('dl', attrs={'class': 'authors-details', 'id': 'authors-details'}) is not None:
+                #print("whattt")
                 author_details = contributor_details.find('dl', attrs={'class': 'authors-details', 'id': 'authors-details'})
 
                 temp_authors = []
@@ -643,15 +644,19 @@ class CambridgeParser(FileParser):
                     temp_authors.append({'name': contrib_box.a.text.strip(), 'emails': [], 'affiliations': []})
 
                 authors = []
-                author_boxes = author_details.find_all('div', attrs={'class': None})
-                for author_box in author_boxes:
-                    abox_details = author_box.find('div', attrs={'class': 'author'})
+                author_boxes = author_details.find_all('div', attrs={'class': 'row author'})
+                #print(author_boxes)
+                for abox_details in author_boxes:
+                    #print(author_box)
+                    #abox_details = author_box.find('div', attrs={'class': 'row author'})
+                    #print("authorbox")
+                    #print(abox_details)
                     if abox_details:
                         a_name = abox_details['data-test-author'].strip()
                         a_name_elements = {e for e in a_name.split(' ')}
 
         #                a_content = author_box.find('div', attrs={'class', 'content'}).div.span.text.strip()
-                        a_content = author_box.find('dd', attrs={'class', 'content'}).div.span.text.strip()
+                        a_content = abox_details.find('dd', attrs={'class', 'content'}).div.span.text.strip()
                         a_content_elements = {e.strip() for e in a_content.split(',')}
 
                         non_name_elements = a_content_elements.difference(a_name_elements)
@@ -677,35 +682,44 @@ class CambridgeParser(FileParser):
                 if not authors:
                     corresponding = author_details.find('div', attrs={'row'})
                     if corresponding:
-                        for element in corresponding.find_all('div', attrs={'class': 'd-inline'}):
+                        for element in corresponding.find_all('div', attrs={'class': 'corresp'}):
                             emails.add(element.a['href'].replace('mailto:', ''))
 
                     authors = match_emails(emails, temp_authors)
 
             else:
-                authors = [{'name': contribs.find('div', attrs = {'class': 'contributor'}).span.text}]
+                authors = [{'name': name.span.text} for name in contribs.find_all('div', attrs = {'class': 'contributor-type__contributor'})]
         else:
             authors = [{'name': ''}]
-
+        
         self.doi = soup.find('meta', attrs={'name': 'citation_doi'})['content']
         self.authors = authors
 
-
         meta_elements = soup.find_all('meta')
+        """
+        if self.doi == "10.1017/S0022109024000371":
+            with open('testmeta.json', 'w', encoding='utf-8') as f:
+                cleaned = [str(tag) for tag in meta_elements] 
+                json.dump(cleaned, f, indent=4)
+        """
         relevant_paper = ['citation_title', 'citation_issue', 'citation_volume', 'citation_firstpage', 'citation_lastpage', 'citation_publication_date', 'citation_abstract']
         filtered_elements_paper = [m for m in meta_elements if m.get('name', '') in relevant_paper]
 
+        date = soup.find('div',attrs={'class':'row published-date'}).find('strong').text.strip()
+        date = datetime.strptime(date, "%d %B %Y")
+        date = date.strftime("%Y/%m/%d")
         currentpaper = None
         currentpaper = {
             'title':  [],
             'abstract': [],
+            'doi': self.doi,
             'volume': [],
             'issue': [],
             'start': [],
             'end': [],
-            'date': [],
+            'date': date,
             'author': self.authors[0],
-            'year': []
+            'year': date[:4]
         }
         for e in filtered_elements_paper:
             if e['name'] == 'citation_title':

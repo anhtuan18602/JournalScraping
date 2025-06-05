@@ -596,12 +596,13 @@ class CambridgeSearch(SearchProvider):
             print(url)
             r = requests.get(url, headers=get_user_agent())
             if r.status_code != 200:
+                print(f"error:{r.status_code}")
                 break
-
-
-            # with open('test.htm', 'w') as f:
-            #     f.write(r.text)
-
+            """
+            print(r)
+            with open('test.htm', 'w', encoding='utf-8') as f:
+                f.write(r.text)
+            """
             soup = BeautifulSoup(r.content, 'html.parser')
 
             # pages
@@ -622,19 +623,20 @@ class CambridgeSearch(SearchProvider):
                     doi = None
 
                 title_box = details.find('li', attrs={'class': 'title'})
-                title = title_box.h5.a.text.strip()
+                title = title_box.h3.a.text.strip()
 
                 # sort out cover and back matters etc
                 if all([e in title.lower() for e in ['issue', 'volume', 'matter']]):
                     continue
 
-                preview_url = self.base_settings['preview_url'] + title_box.h5.a['href']
+                preview_url = self.base_settings['preview_url'] + title_box.h3.a['href']
 
-                source_box = details.find('li', attrs={'class': 'source'})
-                journal = source_box.a.text
+                #source_box = details.find('dt', attrs={'class': 'source'})
+                journal = details.find('a', attrs={'class': 'productParent'}).text
 
-                published_box = details.find('li', attrs={'class': 'published'})
-                year_box = published_box.find('span', attrs={'class': 'date'})
+                published_box = details.find('dt', attrs={'class': 'published'})
+                published_box_dd = published_box.find_next_sibling('dd')
+                year_box = published_box_dd.find('span', attrs={'class': 'date'})
                 year = int(year_box.text[-4:])
 
                 link_box = details.find('li', attrs={'class': None})
