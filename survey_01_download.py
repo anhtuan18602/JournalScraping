@@ -14,8 +14,14 @@ import pandas as pd
 if __name__ == '__main__':
 
     years = (2024, 2024)
+    
+    ## Specify Chrome installation path here
+    binary_location = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 
     journal = 'jbf'
+
+
+    
     journal_map = {
             'jf': {'publisher': 'wiley', 'identifier': '1540-6261','name':'Journal of Finance'},
             'rfs': {'publisher': 'oxford', 'identifier': 'The Review of Financial Studies','name': 'The Review of Financial Studies'},
@@ -46,7 +52,7 @@ if __name__ == '__main__':
         }
         print(years)
         print(search_inputs)
-        SearchProvider = get_search_provider(search_inputs['publisher'], search_inputs['shortname'], search_inputs['identifiers'], year_range=years)
+        SearchProvider = get_search_provider(search_inputs['publisher'], search_inputs['shortname'], search_inputs['identifiers'], binary_location, year_range=years)
 
         SearchProvider.search()
 

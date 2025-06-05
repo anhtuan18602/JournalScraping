@@ -26,7 +26,7 @@ def get_search_provider(publisher, shortname, identifiers, year_range=(2018, 202
 
 
 class SearchProvider:
-    def __init__(self, journal_shortname, journal_identifiers, year_range=(), article_types=None, exclusions=None):
+    def __init__(self, journal_shortname, journal_identifiers, binary_location , year_range=(), article_types=None, exclusions=None):
         self.journal_shortname = journal_shortname
         self.journal_identifiers = journal_identifiers
         self.start_year, self.end_year = year_range
@@ -43,7 +43,7 @@ class SearchProvider:
         options.add_argument("lang=en-US,en;q=0.9")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-gpu")
-        options.binary_location = "C:\Program Files\Google\Chrome\Application\chrome.exe"
+        options.binary_location = binary_location
         # Create driver
         print("Binary location:", options.binary_location)
         self.driver = uc.Chrome(options=options)
