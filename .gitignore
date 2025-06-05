@@ -1,0 +1,16 @@
+.idea/
+venv/
+data/
+files/
+backups/
+searches/
+classes/Keys.py
+
+*.db
+*.pyc
+*.json
+*.csv
+*.pickle
+*.txt
+*.zip
+.DS_Store
