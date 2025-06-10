@@ -10,8 +10,9 @@ import requests
 import json
 import math
 import time
+import sys
 
-def get_search_provider(publisher, shortname, identifiers, year_range=(2018, 2021)):
+def get_search_provider(publisher, shortname, identifiers, binary_location, keywords, year_range=(2018, 2021)):
     sp_map = {
         'elsevier': ElsevierSearch,
         'springer': SpringerSearch,
@@ -19,19 +20,21 @@ def get_search_provider(publisher, shortname, identifiers, year_range=(2018, 202
         'tandf': TAndFSearch,
         'nature': NatureSearch,
         'oxford': OxfordSearch,
-        'cambridge': CambridgeSearch
+        'cambridge': CambridgeSearch,
+        'INFORMS': INFORMSSearch
     }
     Provider = sp_map.get(publisher, lambda sn, ids, year_range: "Search provider does not exist")
-    return Provider(shortname, identifiers, year_range=year_range)
+    return Provider(shortname, identifiers, binary_location, keywords, year_range=year_range)
 
 
 class SearchProvider:
-    def __init__(self, journal_shortname, journal_identifiers, binary_location , year_range=(), article_types=None, exclusions=None):
+    def __init__(self, journal_shortname, journal_identifiers, binary_location , keywords, year_range=(), article_types=None, exclusions=None):
         self.journal_shortname = journal_shortname
         self.journal_identifiers = journal_identifiers
         self.start_year, self.end_year = year_range
         self.article_types = article_types
         self.exclusions = exclusions
+        self.keywords = keywords
         self.results = []
         self.search_conducted = False
         self.base_settings = self._get_base_settings()
@@ -598,11 +601,7 @@ class CambridgeSearch(SearchProvider):
             if r.status_code != 200:
                 print(f"error:{r.status_code}")
                 break
-            """
-            print(r)
-            with open('test.htm', 'w', encoding='utf-8') as f:
-                f.write(r.text)
-            """
+            
             soup = BeautifulSoup(r.content, 'html.parser')
 
             # pages
@@ -650,6 +649,110 @@ class CambridgeSearch(SearchProvider):
 
                 self.results.append({
                     'publisher': 'cambridge',
+                    'journal': journal,
+                    'journal_shortname': self.journal_shortname,
+                    'doi': doi,
+                    'title': title,
+                    'year': year,
+                    'preview_url': preview_url,
+                    'fulltext_url': fulltext_url,
+                })
+
+class INFORMSSearch(SearchProvider):
+    def _get_base_settings(self):
+        return {
+            'search_url': 'https://pubsonline.informs.org/action/doSearch?',
+            'base_url': 'https://pubsonline.informs.org'
+        }
+
+    def _generate_queries(self):
+        base_query = {
+            'field1': 'AllField',
+            'text1': '',
+            'field2': 'AllField',
+            'text2': '',
+            'field3': 'AllField',
+            'text3': '',
+            'publication[]': self.journal_shortname,
+            'publication': '',
+            'Ppub': '',
+            'AfterMonth': 1,
+            'BeforeMonth': 12,
+            'startPage':0,
+            'pageSize':100
+        }
+        for i,keyword in enumerate(self.keywords):
+            base_query.update({
+                f'field{i+1}': 'AllField',
+                f'text{i+1}': keyword
+            })
+
+        queries = []
+        for year in range(self.start_year, self.end_year + 1):
+            query = base_query.copy()
+            query.update({
+                'AfterYear': year,
+                'BeforeYear': year
+            })
+            queries.append(query)
+
+        return queries
+
+    def _conduct_search(self, query):
+        page = 0
+        max_page = 1
+
+        while page < max_page:
+            page += 1
+            
+            print('page', page)
+
+            url = self.base_settings['search_url'] + urlencode(query, quote_via=quote_plus)
+            print(url)
+            self.driver.get(url)
+            time.sleep(5)  # wait for JS to load
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+            query.update({'startPage': page})
+            # pages
+            if page == 1:
+                element = soup.find('ul', attrs={'class': 'rlist--inline pagination__list'})
+                if element:
+                    li_items = element.find_all('li')
+                    max_page = int(li_items[-1].a.text)
+
+            # search results
+            result_ul = soup.find('ul',attrs={'class':'rlist search-result__body items-results'})
+            for result in result_ul.find_all('li', attrs={'class': 'clearfix separator search__item'}):
+
+                doi_element = result.find('a', attrs={})
+                if doi_element:
+                    doi = doi_element['href']
+                else:
+                    doi = None
+
+                #title_box = details.find('li', attrs={'class': 'title'})
+                title = result.find('span',attrs={'class': 'hlFld-Title'}).get_text(strip=True) #title_box.h3.a.text.strip()
+
+                
+
+                preview_url = self.base_settings['base_url'] + result.find('li',attrs={'class':'fullLink'}).a["href"]
+
+                #source_box = details.find('dt', attrs={'class': 'source'})
+                journal = result.find('a', attrs={'class': 'meta__serial'}).text
+
+                published_date = result.find('span', attrs={'class': 'publicationYear'})
+                year = published_date.text.strip("()")[-4:]
+                if year.isdigit():
+                    year = int(year)
+                else:
+                    year = None
+
+                
+                fulltext_url = self.base_settings['base_url'] + result.find('li',attrs={'class':'pdfLink'}).a["href"]
+
+                self.results.append({
+                    'publisher': 'INFORMS',
                     'journal': journal,
                     'journal_shortname': self.journal_shortname,
                     'doi': doi,

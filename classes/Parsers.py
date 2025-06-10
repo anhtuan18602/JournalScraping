@@ -16,7 +16,8 @@ def get_parser(publisher, filepath):
         'tandf': TAndFParser,
         'nature': NatureParser,
         'oxford': OxfordParser,
-        'cambridge': CambridgeParser
+        'cambridge': CambridgeParser,
+        'INFORMS': INFORMSParser
     }
     Parser = parser_map.get(publisher, lambda fp: "Parser does not exist exists")
     return Parser(filepath)
@@ -740,5 +741,71 @@ class CambridgeParser(FileParser):
         #        print(type(currentpaper))
         self.paper = currentpaper
 
+
+        return self
+
+
+class INFORMSParser(FileParser):
+    def parse(self):
+        soup = BeautifulSoup(self.file_content, 'html.parser')
+        citation_element = soup.find('div',attrs={'class':'citation'})
+        title = citation_element.find('h1',attrs={'class':'citation__title'}).text
+        authors_element = citation_element.find('ul',attrs={'title':'list of authors'})
+        author_elements = authors_element.find_all('li',attrs={'class':'accordion-tabbed__tab-mobile'})
+
+        if not author_elements:
+            print(title)
+        for author_element in author_elements:
+            if author_element == None:
+                print(title)
+            #author_detail = author_element.find('div',attrs={'class':'author-info accordion-tabbed__content'})
+            name = author_element.find('p',attrs={'class':'author-name'}).text
+            email = author_element.find('a', attrs={'class':'sm-account__link','title':'Link to email address'})
+            if email:
+                email = email.find('span').text.strip()
+            self.authors.append({
+                'name': name,
+                'email': email
+            })
+            
+        publish_element = soup.find('div',attrs={'class':'epub-section'})
+        self.doi = publish_element.find('a',attrs={'class':'epub-section__doi__text'}).text[16:]
+        date = publish_element.find('span',attrs={'class':'epub-section__date'}).text.strip()
+        abstract = soup.find('div',attrs={'class':'abstractSection abstractInFull'}).find('p').get_text(strip=True)
+        meta_elements = soup.find_all('meta')
+
+        relevant_paper = ['citation_title', 'citation_issue', 'citation_volume', 'citation_firstpage', 'citation_lastpage', 'citation_publication_date', 'citation_abstract']
+        filtered_elements_paper = [m for m in meta_elements if m.get('name', '') in relevant_paper]
+
+        currentpaper = {
+            'title': title,
+            'abstract': abstract,
+            'doi': self.doi,
+            'volume': [],
+            'issue': [],
+            'start': [],
+            'end': [],
+            'date': date,
+            'author': self.authors[0],
+            'year': date[:4]
+        }
+        for e in filtered_elements_paper:
+            if e['name'] == 'citation_title':
+                currentpaper['title'] = e['content']
+            if e['name'] == 'citation_volume':
+                currentpaper['volume'] = e['content']
+            if e['name'] == 'citation_issue':
+                currentpaper['issue'] = e['content']
+            if e['name'] == 'citation_firstpage':
+                currentpaper['start'] = e['content']
+            if e['name'] == 'citation_lastpage':
+                currentpaper['end'] = e['content']
+            if e['name'] == 'citation_publication_date':
+                currentpaper['date'] = e['content']
+                currentpaper['year'] = e['content']
+            if e['name'] == 'citation_abstract' and not abstract:
+                currentpaper['abstract'] = e['content']
+        #        print(type(currentpaper))
+        self.paper = currentpaper
 
         return self

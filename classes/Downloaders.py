@@ -27,7 +27,7 @@ class WileyArticleDownloader:
         return self.download_targets[:self.limit]
 
     def _download_worker(self, job):
-        time.sleep(random.uniform(1, 5)) 
+        #time.sleep(random.uniform(1,5)) 
         #time.sleep(random.uniform(0.5, 2.5))
         job_result = job.copy()
 
