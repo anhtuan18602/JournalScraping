@@ -4,6 +4,7 @@ import os
 import time
 import csv
 import shutil
+import tempfile
 import undetected_chromedriver as uc
 from selenium.webdriver.chrome.options import Options
 from .Utils import get_user_agent, make_download_target
@@ -45,7 +46,9 @@ class WileyArticleDownloader:
         options.add_argument(f"user-agent={get_user_agent()}")
         options.add_argument("--window-size=1280,800")
         options.add_argument("lang=en-US,en;q=0.9")
-        profile_path = f"/tmp/selenium_profile_{os.getpid()}"
+        temp_dir = tempfile.gettempdir()
+        profile_path = os.path.join(temp_dir, f"selenium_profile_{os.getpid()}")
+        #profile_path = f"/tmp/selenium_profile_{os.getpid()}"
         options.add_argument(f"--user-data-dir={profile_path}")
         prefs = {
             "download.default_directory": os.path.abspath(path),
